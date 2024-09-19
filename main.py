@@ -1,4 +1,5 @@
 import os
+import subprocess
 from git import Repo
 
 def pipInstall():
@@ -35,12 +36,33 @@ def gitModules():
                 gitPull()
                 os.chdir('..')
 
+def check_if_pull_needed():
+    # Fetch the latest updates from the remote
+    subprocess.run(['git', 'fetch'], check=True)
+    
+    # Check the status between local and remote
+    local_commit = subprocess.check_output(['git', 'rev-parse', '@'], text=True).strip()
+    remote_commit = subprocess.check_output(['git', 'rev-parse', '@{u}'], text=True).strip()
+    base_commit = subprocess.check_output(['git', 'merge-base', '@', '@{u}'], text=True).strip()
+
+    if local_commit == remote_commit:
+        print("Your branch is up to date with the remote.")
+        return False
+    elif local_commit == base_commit:
+        print("You need to pull the latest changes.")
+        return True
+    elif remote_commit == base_commit:
+        print("You have unpushed local changes.")
+        return False
+    else:
+        print("Your branch has diverged from the remote.")
+        return True
+
+result = check_if_pull_needed()
+print(f"result: {result}")
 
 repo = Repo('.')
-print(os.getcwd())
-command = f"git remote update && git status -uno | grep -q 'Your branch is behind'"
-result = os.system(command)
-if result == 0:
+if result:
     repo.git.pull()
     # check for python files
     if os.path.exists('requirements.txt'):
